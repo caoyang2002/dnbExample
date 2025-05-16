@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D03A0F672DD7178200124A36 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = D03A0F662DD7177A00124A36 /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D03A0F3A2DD70C5E00124A36 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,11 +31,25 @@
 		D03A0F292DD70C5C00124A36 /* dnbExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = dnbExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D03A0F392DD70C5E00124A36 /* dnbExampleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = dnbExampleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D03A0F432DD70C5E00124A36 /* dnbExampleUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = dnbExampleUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D03A0F662DD7177A00124A36 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D03A0F652DD711DB00124A36 /* Exceptions for "dnbExample" folder in "dnbExample" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D03A0F282DD70C5C00124A36 /* dnbExample */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D03A0F2B2DD70C5C00124A36 /* dnbExample */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D03A0F652DD711DB00124A36 /* Exceptions for "dnbExample" folder in "dnbExample" target */,
+			);
 			path = dnbExample;
 			sourceTree = "<group>";
 		};
@@ -79,6 +97,7 @@
 				D03A0F3C2DD70C5E00124A36 /* dnbExampleTests */,
 				D03A0F462DD70C5E00124A36 /* dnbExampleUITests */,
 				D03A0F2A2DD70C5C00124A36 /* Products */,
+				D03A0F662DD7177A00124A36 /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -212,6 +231,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D03A0F672DD7178200124A36 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,6 +417,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = dnbExample/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -436,6 +458,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = dnbExample/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
