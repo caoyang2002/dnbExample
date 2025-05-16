@@ -104,6 +104,7 @@ struct MapViewRepresentable: UIViewRepresentable {
             // 为普通标注提供自定义视图
             let identifier = "locationAnnotation"
             var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+//            let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
             
             if annotationView == nil {
                 annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)

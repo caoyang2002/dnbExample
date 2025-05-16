@@ -5,7 +5,7 @@
 import SwiftUI
 
 @main
-struct MapLocationApp: App {
+struct DnbaseApp: App {
     var body: some Scene {
         WindowGroup {
             LocationMapView()
