@@ -1,13 +1,4 @@
-//
-//  MenuBarView.swift
-//  dnbExample
-//
-//  Created by simons on 2025/5/16.
-//
-
-// MenuBarView.swift
 // 底部菜单栏视图组件
-
 import SwiftUI
 
 struct MenuBarView: View {
@@ -29,7 +20,7 @@ struct MenuBarView: View {
                             selectedItem = item.type
                         }
                         // 执行菜单项自定义动作
-                        item.action?()
+                        item.action?(item.type)  // 添加参数
                     }
                 )
                 .frame(maxWidth: .infinity)
@@ -100,4 +91,19 @@ struct MenuBarContainer<Content: View>: View {
             #endif
         }
     }
+}
+
+#Preview {
+    let menuItems = [
+        // 使用正确的参数顺序
+        MenuItem(title: "主页", icon: "house.fill", type: .home, action: { _ in /* 默认空操作 */ }),
+               MenuItem(title: "附近", icon: "map.fill", type: .nearby, action: { _ in /* 默认空操作 */ }),
+               MenuItem(title: "房间", icon: "bed.double.fill", type: .house, action: { _ in /* 默认空操作 */ }),
+               MenuItem(title: "我的", icon: "person.fill", type: .about, action: { _ in /* 默认空操作 */ })
+    ]
+    
+    MenuBarView(
+        menuItems: menuItems,
+        selectedItem: .constant(.home)
+    )
 }

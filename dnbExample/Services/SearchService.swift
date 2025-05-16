@@ -20,8 +20,11 @@ class SearchService {
     // 搜索区域设置 (可选，不设置则全球范围)
     var searchRegion: MKCoordinateRegion?
     
+
+    
     // 搜索位置
     func searchLocations(query: String) -> AnyPublisher<[LocationSearchResult], Error> {
+        infoLog("设置搜索位置")
         return Future<[LocationSearchResult], Error> { [weak self] promise in
             guard let self = self else {
                 promise(.failure(NSError(domain: "SearchService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Service instance was deallocated"])))
@@ -36,6 +39,7 @@ class SearchService {
             
             // 取消之前的搜索
             self.currentSearch?.cancel()
+    
             
             // 创建搜索请求
             let searchRequest = MKLocalSearch.Request()
@@ -43,10 +47,12 @@ class SearchService {
             
             // 设置搜索区域 (如果有)
             if let region = self.searchRegion {
+                
                 searchRequest.region = region
             }
             
             // 执行搜索
+            infoLog("开始执行搜索")
             let search = MKLocalSearch(request: searchRequest)
             self.currentSearch = search
             

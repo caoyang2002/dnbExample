@@ -94,6 +94,7 @@ class LocationService: NSObject, ObservableObject {
     
     // 请求一次位置更新
     func requestLocation() {
+        infoLog("请求一次位置更新")
         let authStatus = locationManager.authorizationStatus
         
         switch authStatus {
@@ -110,6 +111,7 @@ class LocationService: NSObject, ObservableObject {
     
     // 执行反向地理编码
     private func performReverseGeocode(for location: CLLocation) -> AnyPublisher<Location, LocationError> {
+        infoLog("执行反向地理编码")
         return Future<Location, LocationError> { [weak self] promise in
             guard let self = self else {
                 promise(.failure(.general(NSError())))

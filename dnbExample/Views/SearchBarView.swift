@@ -1,13 +1,4 @@
-//
-//  SearchBarView.swift
-//  dnbExample
-//
-//  Created by simons on 2025/5/16.
-//
-
-// SearchBarView.swift
 // 顶部搜索栏视图组件
-
 import SwiftUI
 
 struct SearchBarView: View {
@@ -21,18 +12,26 @@ struct SearchBarView: View {
             HStack {
                 // 搜索图标和输入框
                 HStack {
+                    // 搜索图标
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(viewModel.searchText.isEmpty ? .gray : .blue)
                         .font(.system(size: 14))
                         .padding(.leading, 8)
                     
+                    // 占位文本
                     TextField("搜索位置...", text: $viewModel.searchText)
                         .font(.system(size: 14))
                         .submitLabel(.search)
                         .onSubmit {
+                            infoLog("触发搜索: \(viewModel.searchText)")
                             if !viewModel.searchText.isEmpty {
                                 viewModel.searchLocations()
+                                infoLog("搜索结束")
                             }
+                            // 添加延迟检查，查看搜索后是否有结果
+                                   DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                       infoLog("搜索结果数量: \(viewModel.searchResults.count)")
+                                   }
                         }
 //                        .onChange(of: viewModel.searchText) { _ in
 //                            if viewModel.searchText.isEmpty {
@@ -45,12 +44,19 @@ struct SearchBarView: View {
                     // iOS 17兼容的修复代码:
                     #if swift(>=5.9) && canImport(SwiftUI) && os(iOS) && compiler(>=5.9)
                     // 在 iOS 17 及以上使用新 API
-                    .onChange(of: viewModel.searchText) {
-                        if viewModel.searchText.isEmpty {
-                            // 清空搜索结果
-                            viewModel.clearResults()
+                        .onChange(of: viewModel.searchText) {
+                            if viewModel.searchText.isEmpty {
+                                // 清空搜索结果
+                                viewModel.clearResults()
+                            } else if viewModel.searchText.count >= 2 {
+                                // 文本不为空且至少2个字符时触发防抖搜索
+                                // 确保搜索模式开启
+                                withAnimation {
+                                    isSearching = true  // 关键：确保搜索模式开启
+                                }
+                                viewModel.debounceSearch()  // 使用防抖函数避免频繁请求
+                            }
                         }
-                    }
                     #else
                     // 在旧版本 iOS 中使用旧 API
                     .onChange(of: viewModel.searchText) { _ in
@@ -125,7 +131,8 @@ struct SearchBarView: View {
                 .frame(height: min(CGFloat(viewModel.searchResults.count * 60), 300))
             }
         }
-        .background(Color(UIColor.systemBackground).opacity(0.8))
+        // 整个搜索区域的背景
+        // .background(Color(UIColor.systemBackground).opacity(0.8))
     }
 }
 
@@ -135,6 +142,7 @@ struct SearchResultRow: View {
     let onTap: () -> Void
     
     var body: some View {
+       
         Button(action: onTap) {
             HStack(spacing: 12) {
                 // 位置图标
@@ -155,6 +163,8 @@ struct SearchResultRow: View {
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
+                }.onAppear(){
+                    infoLog("获取位置信息")
                 }
                 
                 Spacer()
@@ -168,6 +178,10 @@ struct SearchResultRow: View {
             .padding(.horizontal, 16)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(PlainButtonStyle()).onAppear(){ infoLog("开始搜索")}
     }
+}
+
+#Preview{
+    SearchBarView(viewModel: SearchViewModel(), isSearching: .constant(true))
 }

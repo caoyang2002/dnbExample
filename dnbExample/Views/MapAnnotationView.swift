@@ -1,13 +1,4 @@
-//
-//  MapAnnotationView.swift
-//  dnbExample
-//
-//  Created by simons on 2025/5/16.
-//
-
-// MapAnnotationView.swift
 // 自定义地图标注视图
-
 import SwiftUI
 
 struct MapAnnotationView: View {

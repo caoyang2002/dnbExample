@@ -1,11 +1,3 @@
-//
-//  LocationModel.swift
-//  dnbExample
-//
-//  Created by simons on 2025/5/16.
-//
-
-// LocationModel.swift
 // 定义位置相关的数据结构
 
 import Foundation

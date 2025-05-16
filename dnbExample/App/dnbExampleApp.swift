@@ -8,7 +8,9 @@ import SwiftUI
 struct DnbaseApp: App {
     var body: some Scene {
         WindowGroup {
-            LocationMapView()
+            HomeView().onAppear(){
+                print("启动程序")
+            }
         }
     }
 }

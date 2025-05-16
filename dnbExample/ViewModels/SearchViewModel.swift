@@ -1,11 +1,3 @@
-//
-//  SidebarView.swift
-//  dnbExample
-//
-//  Created by simons on 2025/5/16.
-//
-
-
 import Foundation
 import MapKit
 import Combine
@@ -91,7 +83,6 @@ class SearchViewModel: ObservableObject {
                 
                 if case .failure(let error) = completion {
                     self.errorMessage = error.localizedDescription
-                    print("搜索错误: \(error.localizedDescription)")
                 }
             }, receiveValue: { [weak self] results in
                 guard let self = self else { return }
@@ -119,6 +110,7 @@ class SearchViewModel: ObservableObject {
                 }
             })
             .store(in: &cancellables)
+        
     }
     
     // 选择位置
@@ -215,5 +207,22 @@ class SearchViewModel: ObservableObject {
     // 显示搜索历史
     func showSearchHistory() {
         searchResults = searchHistory
+    }
+    // 避免频繁发送请求
+    private var searchTask: DispatchWorkItem?
+
+    func debounceSearch() {
+        // 取消之前的搜索任务
+        searchTask?.cancel()
+        
+        // 创建新的搜索任务，延迟执行
+        let task = DispatchWorkItem { [weak self] in
+            self?.searchLocations()
+        }
+        
+        searchTask = task
+        
+        // 延迟0.5秒执行，避免频繁请求
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: task)
     }
 }

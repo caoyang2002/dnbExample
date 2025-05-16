@@ -70,6 +70,7 @@ class LocationViewModel: ObservableObject {
     
     // 开始请求位置
     func requestLocation() {
+        infoLog("开始请求位置")
         isLoading = true
         errorMessage = nil
         locationService.requestLocation()
