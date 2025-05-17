@@ -9,7 +9,7 @@ class HouseListViewModel: ObservableObject {
     @Published var isShowing: Bool = false
     
     // 面板高度状态
-    @Published var panelState: PanelState = .halfExpanded
+    @Published var panelState: PanelState = .expanded 
     
     // 房屋数据列表
     @Published var houses: [House] = []
@@ -135,6 +135,7 @@ class HouseListViewModel: ObservableObject {
         // 向上拖动
         if dragAmount > dragThreshold {
             // 向下拖动
+            infoLog("向下拖动")
             switch panelState {
             case .expanded:
                 panelState = .halfExpanded
@@ -147,6 +148,7 @@ class HouseListViewModel: ObservableObject {
             }
         } else if dragAmount < -dragThreshold {
             // 向上拖动
+            infoLog("向上拖动")
             switch panelState {
             case .halfExpanded:
                 panelState = .expanded

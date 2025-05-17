@@ -3,54 +3,6 @@ import SwiftUI
 import Combine
 import OSLog
 
-// 自定义修饰符 - 兼容iOS 17的onChange
-struct PanelStateChangeModifier: ViewModifier {
-    let panelState: PanelState
-    let action: () -> Void
-    
-    @State private var previousPanelState: PanelState
-
-    
-    init(panelState: PanelState, action: @escaping () -> Void) {
-        self.panelState = panelState
-        self.action = action
-        _previousPanelState = State(initialValue: panelState)
-    }
-    
-    func body(content: Content) -> some View {
-        if #available(iOS 17.0, *) {
-            content.onChange(of: panelState) { action() }
-        } else {
-            content.onChange(of: panelState) { _ in action() }
-        }
-    }
-}
-
-// 自定义修饰符 - 兼容iOS 17的onChange (布尔值版本)
-struct ShowingChangeModifier: ViewModifier {
-    let isShowing: Bool
-    let action: (Bool) -> Void
-    
-    @State private var previousIsShowing: Bool
-    
-    init(isShowing: Bool, action: @escaping (Bool) -> Void) {
-        self.isShowing = isShowing
-        self.action = action
-        _previousIsShowing = State(initialValue: isShowing)
-    }
-    
-    func body(content: Content) -> some View {
-        if #available(iOS 17.0, *) {
-            content.onChange(of: isShowing) { _, newValue in
-                action(newValue)
-            }
-        } else {
-            content.onChange(of: isShowing) { newValue in
-                action(newValue)
-            }
-        }
-    }
-}
 
 struct HouseListView: View {
     // 视图模型
@@ -245,11 +197,11 @@ struct HouseListView: View {
                 }
             })
             .onAppear {
-                // 当视图出现时，设置为半屏显示
+                // 当视图出现时，设置为全屏显示
                 if isShowing && currentHeight == 0 {
-                    viewModel.panelState = .halfExpanded
+                    viewModel.panelState = .expanded
                     updateHeight(screenHeight: screenHeight)
-                    infoLog("视图出现，设置为半屏显示")
+                    infoLog("视图出现，设置为全屏显示")
                 }
                 
                 // 同步状态
@@ -302,13 +254,14 @@ struct HouseListView: View {
         // 根据拖拽方向和距离确定面板状态
         if value.translation.height > dragThreshold {
             // 向下拖动
+            infoLog("向下拖动")
             switch viewModel.panelState {
-            case .expanded:
+            case .expanded: // 完全展开
                 withAnimation(.spring()) {
                     viewModel.panelState = .halfExpanded
                     updateHeight(screenHeight: screenHeight)
                 }
-            case .halfExpanded:
+            case .halfExpanded: // 一半
                 withAnimation(.spring()) {
                     // 更新绑定状态，确保UI正确响应
                     isShowing = false
@@ -316,7 +269,7 @@ struct HouseListView: View {
                     currentHeight = 0
                 }
                 infoLog("向下拖动关闭面板")
-            case .collapsed:
+            case .collapsed: // 折叠
                 withAnimation(.spring()) {
                     // 更新绑定状态，确保UI正确响应
                     isShowing = false
@@ -327,11 +280,14 @@ struct HouseListView: View {
             }
         } else if value.translation.height < -dragThreshold {
             // 向上拖动
+            infoLog("向上拖动")
             withAnimation(.spring()) {
                 switch viewModel.panelState {
-                case .halfExpanded:
+                case .halfExpanded: // 一般
+                    infoLog("完全展开")
                     viewModel.panelState = .expanded
-                case .collapsed:
+                case .collapsed: // 折叠
+                    infoLog("折叠")
                     viewModel.panelState = .halfExpanded
                 default:
                     break
@@ -543,5 +499,55 @@ struct RoundedCorners: Shape {
             cornerRadii: CGSize(width: max(max(tl, tr), max(bl, br)), height: max(max(tl, tr), max(bl, br)))
         )
         return Path(path.cgPath)
+    }
+}
+
+
+// 自定义修饰符 - 兼容iOS 17的onChange
+struct PanelStateChangeModifier: ViewModifier {
+    let panelState: PanelState
+    let action: () -> Void
+    
+    @State private var previousPanelState: PanelState
+
+    
+    init(panelState: PanelState, action: @escaping () -> Void) {
+        self.panelState = panelState
+        self.action = action
+        _previousPanelState = State(initialValue: panelState)
+    }
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.onChange(of: panelState) { action() }
+        } else {
+            content.onChange(of: panelState) { _ in action() }
+        }
+    }
+}
+
+// 自定义修饰符 - 兼容iOS 17的onChange (布尔值版本)
+struct ShowingChangeModifier: ViewModifier {
+    let isShowing: Bool
+    let action: (Bool) -> Void
+    
+    @State private var previousIsShowing: Bool
+    
+    init(isShowing: Bool, action: @escaping (Bool) -> Void) {
+        self.isShowing = isShowing
+        self.action = action
+        _previousIsShowing = State(initialValue: isShowing)
+    }
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.onChange(of: isShowing) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            content.onChange(of: isShowing) { newValue in
+                action(newValue)
+            }
+        }
     }
 }

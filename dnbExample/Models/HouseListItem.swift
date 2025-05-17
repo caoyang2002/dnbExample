@@ -14,11 +14,11 @@ enum PanelState {
     func height(screenHeight: CGFloat) -> CGFloat {
         switch self {
         case .collapsed:
-            return screenHeight * 0.2
+            return screenHeight * 0
         case .halfExpanded:
-            return screenHeight * 0.5
+            return screenHeight * 0.75
         case .expanded:
-            return screenHeight * 0.9
+            return screenHeight * 0.95
         }
     }
 }
