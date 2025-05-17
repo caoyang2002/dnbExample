@@ -96,7 +96,9 @@ struct HomeView: View {
                 }
             
             // 房屋底部栏
-            HouseListView(isShowing: $showHouseList).opacity(selectedMenuItem == .house ? 1:0).animation(.easeInOut, value: selectedMenuItem)
+           
+                HouseListView(isShowing: $showHouseList).opacity(selectedMenuItem == .house ? 1:0).animation(.easeInOut, value: selectedMenuItem)
+            
         
         }
         .sheet(isPresented: $showDetails) {

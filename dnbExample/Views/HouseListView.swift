@@ -1,17 +1,66 @@
+import Foundation
 import SwiftUI
+import Combine
+import OSLog
 
+// 自定义修饰符 - 兼容iOS 17的onChange
+struct PanelStateChangeModifier: ViewModifier {
+    let panelState: PanelState
+    let action: () -> Void
+    
+    @State private var previousPanelState: PanelState
 
+    
+    init(panelState: PanelState, action: @escaping () -> Void) {
+        self.panelState = panelState
+        self.action = action
+        _previousPanelState = State(initialValue: panelState)
+    }
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.onChange(of: panelState) { action() }
+        } else {
+            content.onChange(of: panelState) { _ in action() }
+        }
+    }
+}
 
-// 房屋列表视图 - 从底部弹出
+// 自定义修饰符 - 兼容iOS 17的onChange (布尔值版本)
+struct ShowingChangeModifier: ViewModifier {
+    let isShowing: Bool
+    let action: (Bool) -> Void
+    
+    @State private var previousIsShowing: Bool
+    
+    init(isShowing: Bool, action: @escaping (Bool) -> Void) {
+        self.isShowing = isShowing
+        self.action = action
+        _previousIsShowing = State(initialValue: isShowing)
+    }
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.onChange(of: isShowing) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            content.onChange(of: isShowing) { newValue in
+                action(newValue)
+            }
+        }
+    }
+}
+
 struct HouseListView: View {
     // 视图模型
     @ObservedObject var viewModel: HouseListViewModel
-    // 视图模型类
-
-
-
+    
     // 是否显示
     @Binding var isShowing: Bool
+    
+    @State private var showDetailPanel = false
+    @State private var selectedHouseForDetail: House? = nil
     
     // 拖拽状态
     enum DragState {
@@ -56,18 +105,24 @@ struct HouseListView: View {
             let screenHeight = geometry.size.height
             
             ZStack {
-                // 半透明背景
+                // 半透明背景 - 修改了条件判断和动画
                 if isShowing {
                     Color.black.opacity(0.4)
                         .edgesIgnoringSafeArea(.all)
                         .onTapGesture {
-                            // 点击背景关闭面板
-                            withAnimation(.spring()) {
-                                isShowing = false
-                                viewModel.hidePanel()
-                            }
+                            // 点击背景关闭面板 - 直接设置绑定状态
+                            isShowing = false
+                            viewModel.isShowing = false
+                            viewModel.resetPanelState()
+                            infoLog("背景点击 - 关闭面板")
                         }
                         .transition(.opacity)
+                        .onAppear() {
+                            infoLog("显示半透明背景")
+                        }
+                        .onDisappear {
+                            infoLog("隐藏半透明背景")
+                        }
                     
                     // 底部弹出面板
                     VStack(spacing: 0) {
@@ -77,6 +132,9 @@ struct HouseListView: View {
                             .frame(width: 40, height: 5)
                             .padding(.top, 10)
                             .padding(.bottom, 5)
+                            .onAppear() {
+                                infoLog("显示顶部拖动条")
+                            }
                         
                         // 标题栏
                         HStack {
@@ -173,96 +231,131 @@ struct HouseListView: View {
                                 state = .dragging(translation: value.translation.height)
                             }
                             .onEnded { value in
-                                // 拖拽结束时处理状态更新 - 简化判断逻辑
-                                let dragThreshold: CGFloat = 50
-                                
-                                // 根据拖拽方向和距离确定面板状态
-                                withAnimation(.spring()) {
-                                    if value.translation.height > dragThreshold {
-                                        // 向下拖动
-                                        switch viewModel.panelState {
-                                        case .expanded:
-                                            viewModel.panelState = .halfExpanded
-                                        case .halfExpanded:
-                                            isShowing = false
-                                            viewModel.hidePanel()
-                                        case .collapsed:
-                                            isShowing = false
-                                            viewModel.hidePanel()
-                                        }
-                                    } else if value.translation.height < -dragThreshold {
-                                        // 向上拖动
-                                        switch viewModel.panelState {
-                                        case .halfExpanded:
-                                            viewModel.panelState = .expanded
-                                        case .collapsed:
-                                            viewModel.panelState = .halfExpanded
-                                        default:
-                                            break
-                                        }
-                                    }
-                                    
-                                    // 更新当前高度
-                                    updateHeight(screenHeight: screenHeight)
-                                }
+                                // 拖拽结束时将处理逻辑委托给视图模型
+                                handleDragGestureEnded(value: value, screenHeight: screenHeight)
                             }
                     )
                     .transition(.move(edge: .bottom))
-                    
-                    // 导航到房屋详情页面
-                    NavigationLink(
-                        destination: HouseDetailView(house: selectedHouse ?? House(id: "", name: "", address: "", roomCount: 0, icon: "")),
-                        isActive: $showHouseDetail,
-                        label: { EmptyView() }
-                    )
-                    .hidden()
                 }
             }
-            .onChange(of: viewModel.panelState) { _ in
+            // onChange修改为兼容新旧版本iOS - 更新为使用本地方法
+            .modifier(PanelStateChangeModifier(panelState: viewModel.panelState) {
                 withAnimation(.spring()) {
                     updateHeight(screenHeight: screenHeight)
                 }
-            }
+            })
             .onAppear {
                 // 当视图出现时，设置为半屏显示
                 if isShowing && currentHeight == 0 {
                     viewModel.panelState = .halfExpanded
                     updateHeight(screenHeight: screenHeight)
+                    infoLog("视图出现，设置为半屏显示")
                 }
+                
+                // 同步状态
+                viewModel.isShowing = isShowing
                 
                 // 加载房屋数据
                 if viewModel.houses.isEmpty || viewModel.isLoading {
                     viewModel.loadHouses()
                 }
             }
-            .onChange(of: isShowing) { newValue in
+            // onChange修改为兼容新旧版本iOS - 更新同步逻辑
+            .modifier(ShowingChangeModifier(isShowing: isShowing) { newValue in
                 // 保持视图模型状态与绑定状态同步
-                viewModel.isShowing = newValue
-                
-                // 当打开面板时设置为半屏
-                if newValue {
-                    viewModel.panelState = .halfExpanded
-                    withAnimation(.spring()) {
-                        updateHeight(screenHeight: screenHeight)
-                    }
-                } else {
-                    withAnimation(.spring()) {
-                        currentHeight = 0
+                if viewModel.isShowing != newValue {
+                    viewModel.isShowing = newValue
+                    infoLog("绑定isShowing改变: \(newValue)，同步到视图模型")
+                    
+                    // 当打开面板时设置为半屏
+                    if newValue {
+                        viewModel.panelState = .halfExpanded
+                        withAnimation(.spring()) {
+                            updateHeight(screenHeight: screenHeight)
+                        }
+                    } else {
+                        withAnimation(.spring()) {
+                            currentHeight = 0
+                        }
                     }
                 }
-            }
+            })
+            // 添加对视图模型isShowing的监听
+            .modifier(ShowingChangeModifier(isShowing: viewModel.isShowing) { newValue in
+                // 保持绑定状态与视图模型状态同步
+                if isShowing != newValue {
+                    isShowing = newValue
+                    infoLog("视图模型isShowing改变: \(newValue)，同步到绑定")
+                }
+            })
         }
         .edgesIgnoringSafeArea(.all)
+        if let house = selectedHouseForDetail {
+            HouseDetailPanelView(isShowing: $showDetailPanel, house: house)
+        }
+    }
+    
+    // 处理拖拽手势结束
+    private func handleDragGestureEnded(value: DragGesture.Value, screenHeight: CGFloat) {
+        let dragThreshold: CGFloat = 40
+        
+        // 根据拖拽方向和距离确定面板状态
+        if value.translation.height > dragThreshold {
+            // 向下拖动
+            switch viewModel.panelState {
+            case .expanded:
+                withAnimation(.spring()) {
+                    viewModel.panelState = .halfExpanded
+                    updateHeight(screenHeight: screenHeight)
+                }
+            case .halfExpanded:
+                withAnimation(.spring()) {
+                    // 更新绑定状态，确保UI正确响应
+                    isShowing = false
+                    viewModel.isShowing = false
+                    currentHeight = 0
+                }
+                infoLog("向下拖动关闭面板")
+            case .collapsed:
+                withAnimation(.spring()) {
+                    // 更新绑定状态，确保UI正确响应
+                    isShowing = false
+                    viewModel.isShowing = false
+                    currentHeight = 0
+                }
+                infoLog("向下拖动关闭面板")
+            }
+        } else if value.translation.height < -dragThreshold {
+            // 向上拖动
+            withAnimation(.spring()) {
+                switch viewModel.panelState {
+                case .halfExpanded:
+                    viewModel.panelState = .expanded
+                case .collapsed:
+                    viewModel.panelState = .halfExpanded
+                default:
+                    break
+                }
+                updateHeight(screenHeight: screenHeight)
+            }
+        } else {
+            // 如果拖拽距离不够，保持当前状态但更新高度
+            withAnimation(.spring()) {
+                updateHeight(screenHeight: screenHeight)
+            }
+        }
     }
     
     // 更新面板高度 - 将计算逻辑抽离出来
     private func updateHeight(screenHeight: CGFloat) {
         currentHeight = viewModel.panelState.height(screenHeight: screenHeight)
+        infoLog("更新面板高度: \(currentHeight)")
     }
     
-    // 房屋列表内容区域
+    // MARK: - 房屋列表内容区域
     @ViewBuilder
     private func houseListContent() -> some View {
+      
         if viewModel.isLoading {
             // 加载中状态
             loadingView()
@@ -278,11 +371,12 @@ struct HouseListView: View {
                 LazyVStack(spacing: 16) {
                     ForEach(viewModel.filteredHouses) { house in
                         HouseCell(house: house)
-                            .onTapGesture {
-                                // 点击时导航到详情页
-                                selectedHouse = house
-                                showHouseDetail = true
-                            }
+                        // 修改点击处理
+                        .onTapGesture {
+                            selectedHouseForDetail = house
+                            showDetailPanel = true
+                            infoLog("点击了房屋: \(house.name)")
+                        }
                     }
                     
                     // 空间填充，以便滚动
@@ -379,64 +473,6 @@ struct HouseListView: View {
             Spacer()
         }
         .padding(.vertical, 40)
-    }
-}
-
-// 房屋详情视图
-struct HouseDetailView: View {
-    let house: House
-    
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // 房屋标题和图标
-                HStack {
-                    Text(house.name)
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                    
-                    Spacer()
-                    
-                    ZStack {
-                        Circle()
-                            .fill(Color.blue.opacity(0.1))
-                            .frame(width: 70, height: 70)
-                        
-                        Image(systemName: house.icon)
-                            .font(.system(size: 30))
-                            .foregroundColor(.blue)
-                    }
-                }
-                .padding(.bottom, 10)
-                
-                // 地址信息
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("地址")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    Text(house.address)
-                        .font(.body)
-                }
-                .padding(.bottom, 10)
-                
-                // 房间信息
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("房间数量")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
-                    Text("\(house.roomCount) 个房间")
-                        .font(.body)
-                }
-                
-                // 这里可以添加更多房屋详情内容
-                
-                Spacer()
-            }
-            .padding()
-        }
-        .navigationBarTitle("房屋详情", displayMode: .inline)
     }
 }
 

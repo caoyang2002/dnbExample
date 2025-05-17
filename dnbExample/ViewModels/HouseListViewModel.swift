@@ -115,6 +115,11 @@ class HouseListViewModel: ObservableObject {
         infoLog("重置面板状态")
     }
     
+    func resetPanelState() {
+        searchText = ""
+        panelState = .halfExpanded
+        infoLog("重置面板状态")
+    }
     // 更新面板状态
     func updatePanelState(_ newState: PanelState) {
         withAnimation(.spring()) {

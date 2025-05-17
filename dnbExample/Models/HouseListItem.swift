@@ -23,7 +23,7 @@ enum PanelState {
     }
 }
 // 房屋模型
-struct House: Identifiable, Equatable {
+struct House: Identifiable, Equatable,Hashable {
     let id: String
     let name: String
     let address: String
@@ -41,12 +41,3 @@ struct House: Identifiable, Equatable {
     ]
 }
 
-// 日志函数
-//func infoLog(_ message: String) {
-//    if #available(iOS 14.0, *) {
-//        let logger = Logger(subsystem: "com.yourapp.houselist", category: "HouseList")
-//        logger.info("\(message)")
-//    } else {
-//        NSLog("[HouseList] \(message)")
-//    }
-//}
