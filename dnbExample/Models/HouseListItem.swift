@@ -5,24 +5,23 @@ import OSLog
 // MARK: - 模型定义和扩展
 
 // 面板高度状态
-enum PanelState: String {
-    case collapsed   // 折叠状态
-    case partial     // 部分展开
-    case expanded    // 完全展开
+enum PanelState {
+    case collapsed    // 折叠状态（屏幕20%）
+    case halfExpanded // 半展开状态（屏幕50%）
+    case expanded     // 完全展开状态（屏幕90%）
     
-    // 获取对应状态的高度
+    // 根据屏幕高度计算面板高度
     func height(screenHeight: CGFloat) -> CGFloat {
         switch self {
         case .collapsed:
-            return 100
-        case .partial:
-            return screenHeight * 0.4
+            return screenHeight * 0.2
+        case .halfExpanded:
+            return screenHeight * 0.5
         case .expanded:
-            return screenHeight * 0.8
+            return screenHeight * 0.9
         }
     }
 }
-
 // 房屋模型
 struct House: Identifiable, Equatable {
     let id: String

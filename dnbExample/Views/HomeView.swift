@@ -1,6 +1,7 @@
 // 主地图视图界面 - 整合搜索栏、底部菜单和侧边栏
 import SwiftUI
 import MapKit
+import OSLog
 
 struct HomeView: View {
     
@@ -28,7 +29,9 @@ struct HomeView: View {
                 region: $viewModel.mapRegion,
                 annotations: viewModel.currentLocation.map { [$0.toAnnotation()] } ?? []
             )
-            .ignoresSafeArea()
+            .ignoresSafeArea().onAppear(){
+                infoLog("显示地图视图")
+            }
           
             
             // 主要内容层
@@ -36,16 +39,20 @@ struct HomeView: View {
                 // 1. 顶部搜索栏 - 始终显示在最上方
                 SearchBarView(viewModel: searchViewModel, isSearching: $isSearching)
                     .padding(.top, 8)
-                    .padding(.horizontal)
+                    .padding(.horizontal).onAppear(){
+                        infoLog("显示顶部搜索栏")
+                    }
                 
                 // 2. 状态信息栏 - 不再受isSearching影响，始终显示
                 if !isSearching {
                     locationStatusBar
-                        .padding(.top, 8)
+                        .padding(.top, 8).onAppear(){
+                            infoLog("显示状态栏")
+                        }
                 }
                 // 自定义调试日志
                 CustomDebugLogView()
-                       .padding(.top, 24)
+                    .padding(.top, 24)
 //                       .padding(.horizontal)
                 // 3. 中间空白区域
                 Spacer()
@@ -65,7 +72,9 @@ struct HomeView: View {
                 // 4. 位置信息 - 在菜单栏上方
                 if !isSearching && selectedMenuItem == .home {
                     bottomControls
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 8).onAppear(){
+                            infoLog("显示位置信息")
+                        }
                 }
                 
                 // 5. 底部菜单栏
@@ -73,14 +82,18 @@ struct HomeView: View {
                     MenuBarView(
                         menuItems: createMenuItems(),
                         selectedItem: $selectedMenuItem
-                    )
+                    ).onAppear(){
+                        infoLog("显示底部菜单栏")
+                    }
                 }
             }
             
             // 右侧侧边栏
             SidebarView(isShowing: $showAbout)
                 .opacity(selectedMenuItem == .about ? 1 : 0)
-                .animation(.easeInOut, value: selectedMenuItem)
+                .animation(.easeInOut, value: selectedMenuItem).onAppear(){
+                    infoLog("显示右侧侧边栏")
+                }
             
             // 房屋底部栏
             HouseListView(isShowing: $showHouseList).opacity(selectedMenuItem == .house ? 1:0).animation(.easeInOut, value: selectedMenuItem)

@@ -6,12 +6,37 @@ import SwiftUI
 struct HouseListView: View {
     // 视图模型
     @ObservedObject var viewModel: HouseListViewModel
-    
+    // 视图模型类
+
+
+
     // 是否显示
     @Binding var isShowing: Bool
     
-    // 记录拖拽状态
-    @GestureState private var dragOffset: CGFloat = 0
+    // 拖拽状态
+    enum DragState {
+        case inactive
+        case dragging(translation: CGFloat)
+        
+        var translation: CGFloat {
+            switch self {
+            case .inactive:
+                return 0
+            case .dragging(let translation):
+                return translation
+            }
+        }
+    }
+    
+    // 记录拖拽状态 - 使用更轻量的方式
+    @GestureState private var dragState = DragState.inactive
+    
+    // 当前面板高度（与动画分离）
+    @State private var currentHeight: CGFloat = 0
+    
+    // 选中的房屋（用于导航）
+    @State private var selectedHouse: House? = nil
+    @State private var showHouseDetail = false
     
     // 初始化方法，允许外部传入视图模型
     init(isShowing: Binding<Bool>, viewModel: HouseListViewModel? = nil) {
@@ -29,7 +54,6 @@ struct HouseListView: View {
         GeometryReader { geometry in
             // 计算当前应显示的高度
             let screenHeight = geometry.size.height
-            let currentHeight = viewModel.panelState.height(screenHeight: screenHeight) + dragOffset
             
             ZStack {
                 // 半透明背景
@@ -118,7 +142,7 @@ struct HouseListView: View {
                         Spacer(minLength: 0)
                     }
                     .frame(width: geometry.size.width)
-                    .frame(height: currentHeight > 0 ? currentHeight : 0)
+                    .frame(height: currentHeight)
                     .background(
                         // 美观的背景设计
                         ZStack {
@@ -141,54 +165,99 @@ struct HouseListView: View {
                     )
                     .mask(RoundedCorners(tl: 16, tr: 16))
                     .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: -5)
-                    .offset(y: screenHeight - currentHeight)
+                    .offset(y: max(0, screenHeight - currentHeight + dragState.translation))
                     .gesture(
-                        // 添加拖拽手势
+                        // 优化拖拽手势实现
                         DragGesture()
-                            .updating($dragOffset) { value, state, _ in
-                                // 更新拖拽状态
-                                if value.translation.height < 0 {
-                                    // 向上拖动时，限制最大高度
-                                    state = max(value.translation.height, -currentHeight + PanelState.expanded.height(screenHeight: screenHeight))
-                                } else {
-                                    // 向下拖动
-                                    state = value.translation.height
-                                }
+                            .updating($dragState) { value, state, _ in
+                                state = .dragging(translation: value.translation.height)
                             }
                             .onEnded { value in
-                                // 拖拽结束时处理状态更新
-                                viewModel.handleDragGesture(
-                                    dragAmount: value.translation.height,
-                                    screenHeight: screenHeight
-                                )
+                                // 拖拽结束时处理状态更新 - 简化判断逻辑
+                                let dragThreshold: CGFloat = 50
                                 
-                                // 更新绑定的显示状态
-                                isShowing = viewModel.isShowing
+                                // 根据拖拽方向和距离确定面板状态
+                                withAnimation(.spring()) {
+                                    if value.translation.height > dragThreshold {
+                                        // 向下拖动
+                                        switch viewModel.panelState {
+                                        case .expanded:
+                                            viewModel.panelState = .halfExpanded
+                                        case .halfExpanded:
+                                            isShowing = false
+                                            viewModel.hidePanel()
+                                        case .collapsed:
+                                            isShowing = false
+                                            viewModel.hidePanel()
+                                        }
+                                    } else if value.translation.height < -dragThreshold {
+                                        // 向上拖动
+                                        switch viewModel.panelState {
+                                        case .halfExpanded:
+                                            viewModel.panelState = .expanded
+                                        case .collapsed:
+                                            viewModel.panelState = .halfExpanded
+                                        default:
+                                            break
+                                        }
+                                    }
+                                    
+                                    // 更新当前高度
+                                    updateHeight(screenHeight: screenHeight)
+                                }
                             }
                     )
                     .transition(.move(edge: .bottom))
+                    
+                    // 导航到房屋详情页面
+                    NavigationLink(
+                        destination: HouseDetailView(house: selectedHouse ?? House(id: "", name: "", address: "", roomCount: 0, icon: "")),
+                        isActive: $showHouseDetail,
+                        label: { EmptyView() }
+                    )
+                    .hidden()
                 }
             }
-            .animation(.spring(), value: isShowing)
-            .edgesIgnoringSafeArea(.all)
-        }
-        .onAppear {
-            // 当视图出现时，同步外部绑定与视图模型
-            viewModel.isShowing = isShowing
-            
-            // 加载房屋数据
-            if viewModel.houses.isEmpty || viewModel.isLoading {
-                viewModel.loadHouses()
+            .onChange(of: viewModel.panelState) { _ in
+                withAnimation(.spring()) {
+                    updateHeight(screenHeight: screenHeight)
+                }
+            }
+            .onAppear {
+                // 当视图出现时，设置为半屏显示
+                if isShowing && currentHeight == 0 {
+                    viewModel.panelState = .halfExpanded
+                    updateHeight(screenHeight: screenHeight)
+                }
+                
+                // 加载房屋数据
+                if viewModel.houses.isEmpty || viewModel.isLoading {
+                    viewModel.loadHouses()
+                }
+            }
+            .onChange(of: isShowing) { newValue in
+                // 保持视图模型状态与绑定状态同步
+                viewModel.isShowing = newValue
+                
+                // 当打开面板时设置为半屏
+                if newValue {
+                    viewModel.panelState = .halfExpanded
+                    withAnimation(.spring()) {
+                        updateHeight(screenHeight: screenHeight)
+                    }
+                } else {
+                    withAnimation(.spring()) {
+                        currentHeight = 0
+                    }
+                }
             }
         }
-        .onChange(of: isShowing) { newValue in
-            // 保持视图模型状态与绑定状态同步
-            viewModel.isShowing = newValue
-        }
-        .onChange(of: viewModel.isShowing) { newValue in
-            // 保持绑定状态与视图模型状态同步
-            isShowing = newValue
-        }
+        .edgesIgnoringSafeArea(.all)
+    }
+    
+    // 更新面板高度 - 将计算逻辑抽离出来
+    private func updateHeight(screenHeight: CGFloat) {
+        currentHeight = viewModel.panelState.height(screenHeight: screenHeight)
     }
     
     // 房屋列表内容区域
@@ -209,6 +278,11 @@ struct HouseListView: View {
                 LazyVStack(spacing: 16) {
                     ForEach(viewModel.filteredHouses) { house in
                         HouseCell(house: house)
+                            .onTapGesture {
+                                // 点击时导航到详情页
+                                selectedHouse = house
+                                showHouseDetail = true
+                            }
                     }
                     
                     // 空间填充，以便滚动
@@ -308,57 +382,109 @@ struct HouseListView: View {
     }
 }
 
-// 单个房屋单元格
+// 房屋详情视图
+struct HouseDetailView: View {
+    let house: House
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // 房屋标题和图标
+                HStack {
+                    Text(house.name)
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                    
+                    Spacer()
+                    
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue.opacity(0.1))
+                            .frame(width: 70, height: 70)
+                        
+                        Image(systemName: house.icon)
+                            .font(.system(size: 30))
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.bottom, 10)
+                
+                // 地址信息
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("地址")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text(house.address)
+                        .font(.body)
+                }
+                .padding(.bottom, 10)
+                
+                // 房间信息
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("房间数量")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("\(house.roomCount) 个房间")
+                        .font(.body)
+                }
+                
+                // 这里可以添加更多房屋详情内容
+                
+                Spacer()
+            }
+            .padding()
+        }
+        .navigationBarTitle("房屋详情", displayMode: .inline)
+    }
+}
+
+// 单个房屋单元格 - 移除了Button包装，由父视图处理点击事件
 struct HouseCell: View {
     let house: House
     
     var body: some View {
-        Button(action: {
-            // 点击房屋的操作
-            infoLog("点击了房屋: \(house.name)")
-        }) {
-            HStack(spacing: 16) {
-                // 房屋图标
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.1))
-                        .frame(width: 60, height: 60)
-                    
-                    Image(systemName: house.icon)
-                        .font(.system(size: 24))
-                        .foregroundColor(.blue)
-                }
+        HStack(spacing: 16) {
+            // 房屋图标
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.1))
+                    .frame(width: 60, height: 60)
                 
-                // 房屋信息
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(house.name)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.primary)
-                    
-                    Text(house.address)
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
-                    
-                    Text("\(house.roomCount) 个房间")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray.opacity(0.8))
-                }
+                Image(systemName: house.icon)
+                    .font(.system(size: 24))
+                    .foregroundColor(.blue)
+            }
+            
+            // 房屋信息
+            VStack(alignment: .leading, spacing: 4) {
+                Text(house.name)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.primary)
                 
-                Spacer()
-                
-                // 右箭头
-                Image(systemName: "chevron.right")
+                Text(house.address)
                     .font(.system(size: 14))
                     .foregroundColor(.gray)
+                    .lineLimit(1)
+                
+                Text("\(house.roomCount) 个房间")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray.opacity(0.8))
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .background(Color.white)
-            .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
+            
+            Spacer()
+            
+            // 右箭头
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
     }
 }
 
@@ -381,60 +507,5 @@ struct RoundedCorners: Shape {
             cornerRadii: CGSize(width: max(max(tl, tr), max(bl, br)), height: max(max(tl, tr), max(bl, br)))
         )
         return Path(path.cgPath)
-    }
-}
-
-// 用于在菜单栏中显示的"房屋"按钮
-struct HouseButton: View {
-    // 在实际使用中，可能会从外部注入该视图模型
-    @StateObject private var viewModel = HouseListViewModel()
-    @State private var showHouseList = false
-    
-    var body: some View {
-        Button(action: {
-            withAnimation(.spring()) {
-                showHouseList.toggle()
-                viewModel.togglePanel()
-            }
-        }) {
-            HStack(spacing: 5) {
-                Image(systemName: "house.fill")
-                    .font(.system(size: 14))
-                Text("房屋")
-                    .font(.system(size: 14))
-            }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(Color.blue.opacity(0.1))
-            .foregroundColor(.blue)
-            .cornerRadius(20)
-        }
-        .overlay(
-            HouseListView(isShowing: $showHouseList, viewModel: viewModel)
-        )
-    }
-}
-
-// 预览
-struct HouseListView_Previews: PreviewProvider {
-    static var previews: some View {
-        ZStack {
-            // 模拟主界面背景
-            Color.gray.opacity(0.2)
-                .edgesIgnoringSafeArea(.all)
-            
-            VStack {
-                Spacer()
-                
-                HStack {
-                    Spacer()
-                    
-                    HouseButton()
-                    
-                    Spacer()
-                }
-                .padding(.bottom, 20)
-            }
-        }
     }
 }

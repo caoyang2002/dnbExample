@@ -9,7 +9,7 @@ class HouseListViewModel: ObservableObject {
     @Published var isShowing: Bool = false
     
     // 面板高度状态
-    @Published var panelState: PanelState = .partial
+    @Published var panelState: PanelState = .halfExpanded
     
     // 房屋数据列表
     @Published var houses: [House] = []
@@ -94,7 +94,7 @@ class HouseListViewModel: ObservableObject {
     func showPanel() {
         withAnimation(.spring()) {
             isShowing = true
-            panelState = .partial
+            panelState = .halfExpanded
             infoLog("显示面板")
         }
     }
@@ -111,7 +111,7 @@ class HouseListViewModel: ObservableObject {
     // 重置面板状态
     private func resetPanel() {
         searchText = ""
-        panelState = .partial
+        panelState = .collapsed
         infoLog("重置面板状态")
     }
     
@@ -128,31 +128,27 @@ class HouseListViewModel: ObservableObject {
         let dragThreshold: CGFloat = 40
         
         // 向上拖动
-        if dragAmount < -dragThreshold {
-            withAnimation(.spring()) {
-                switch panelState {
-                case .collapsed:
-                    panelState = .partial
-                case .partial:
-                    panelState = .expanded
-                case .expanded:
-                    break // 已经是最大高度
-                }
-                infoLog("向上拖动，更新面板状态: \(panelState)")
+        if dragAmount > dragThreshold {
+            // 向下拖动
+            switch panelState {
+            case .expanded:
+                panelState = .halfExpanded
+            case .halfExpanded:
+                isShowing = false
+                hidePanel()
+            case .collapsed:
+                isShowing = false
+                hidePanel()
             }
-        }
-        // 向下拖动
-        else if dragAmount > dragThreshold {
-            withAnimation(.spring()) {
-                switch panelState {
-                case .expanded:
-                    panelState = .partial
-                case .partial:
-                    panelState = .collapsed
-                case .collapsed:
-                    isShowing = false
-                }
-                infoLog("向下拖动，更新面板状态: \(panelState)")
+        } else if dragAmount < -dragThreshold {
+            // 向上拖动
+            switch panelState {
+            case .halfExpanded:
+                panelState = .expanded
+            case .collapsed:
+                panelState = .halfExpanded
+            default:
+                break
             }
         }
     }
